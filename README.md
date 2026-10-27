@@ -2,8 +2,8 @@
 
 Каждый день в 06:00 МСК GitHub Actions запускает `caprigo_feed.py` и публикует результат на GitHub Pages:
 
-- фид: https://denis-davydov-get.github.io/caprigo-feed/caprigo_feed.xml
-- отчёт сопоставления: https://denis-davydov-get.github.io/caprigo-feed/match_report.csv
+- фид: https://denis-davydov-get.github.io/caprigoru-shop-feed/caprigo_feed.xml
+- отчёт сопоставления: https://denis-davydov-get.github.io/caprigoru-shop-feed/match_report.csv
 
 ## Что делает скрипт
 

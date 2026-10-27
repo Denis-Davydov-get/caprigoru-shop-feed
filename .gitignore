@@ -1,0 +1,5 @@
+feed/
+public/
+*.log
+*.tmp
+__pycache__/

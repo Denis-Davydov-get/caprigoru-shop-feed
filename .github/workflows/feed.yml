@@ -1,0 +1,43 @@
+name: Caprigo feed
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # каждый день в 06:00 МСК (03:00 UTC); GitHub может запустить с задержкой
+  workflow_dispatch:       # ручной запуск: Actions → Caprigo feed → Run workflow
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Генерация фида (+ отчёт match_report.csv)
+        run: python caprigo_feed.py public/caprigo_feed.xml
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

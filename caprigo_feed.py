@@ -26,7 +26,7 @@ import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from xml.sax.saxutils import escape
 
@@ -347,7 +347,7 @@ def x(s):
 
 def build_yml(offers):
     cats = {c: n for n, c in enumerate(sorted({o["category"] for o in offers}), start=1)}
-    now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+03:00")
+    now = datetime.now(timezone(timedelta(hours=3))).isoformat(timespec="seconds")  # МСК, даже на серверах GitHub (UTC)
     out = ['<?xml version="1.0" encoding="UTF-8"?>', f'<yml_catalog date="{now}">', "<shop>",
            f"<name>{x(SHOP_NAME)}</name>", f"<company>{x(COMPANY)}</company>", f"<url>{SHOP}/</url>",
            '<currencies><currency id="RUR" rate="1"/></currencies>', "<categories>"]

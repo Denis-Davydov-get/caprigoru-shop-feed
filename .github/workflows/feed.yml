@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -26,7 +26,14 @@ jobs:
           python-version: "3.12"
 
       - name: Генерация фида (+ отчёт match_report.csv)
-        run: python caprigo_feed.py public/caprigo_feed.xml
+        # Если сайт недоступен целиком, пробуем ещё раз через 10 минут
+        run: |
+          for attempt in 1 2 3; do
+            python caprigo_feed.py public/caprigo_feed.xml && exit 0
+            echo "Попытка $attempt не удалась"
+            [ $attempt -lt 3 ] && sleep 600
+          done
+          exit 1
 
       - uses: actions/upload-pages-artifact@v3
         with:

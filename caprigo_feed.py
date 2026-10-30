@@ -38,8 +38,8 @@ UA = "Mozilla/5.0 (compatible; CaprigoFeedBot/1.0)"
 SHOP_NAME = "Caprigo"
 COMPANY = "Caprigo"
 VENDOR = "Caprigo"
-THREADS = 6
-MIN_OFFERS = 20  # если товаров меньше — что-то сломалось, фид не обновляем
+THREADS = 4
+MIN_OFFERS = 100  # если товаров меньше — что-то сломалось, фид не обновляем
 
 # Разделы caprigoshop.ru, которые не относятся к мебели для ванной — их не обходим
 SHOP_SKIP = re.compile(r"kukhn|cveta|cvet-|stil|santekh|smesitel|unitaz|bide|vann[yi]$|dush|polotence|"
@@ -55,12 +55,12 @@ log = logging.getLogger("caprigo")
 
 # ---------- HTTP ----------
 
-def fetch(url, retries=3):
+def fetch(url, retries=4):
     err = None
     for attempt in range(1, retries + 1):
         try:
             req = urllib.request.Request(url, headers={"User-Agent": UA})
-            with urllib.request.urlopen(req, timeout=60) as r:
+            with urllib.request.urlopen(req, timeout=30) as r:
                 return r.read().decode("utf-8", "replace")
         except urllib.error.HTTPError as e:
             if e.code == 404:
@@ -70,7 +70,7 @@ def fetch(url, retries=3):
             err = e
         log.warning("GET %s — попытка %d: %s", url, attempt, err)
         if attempt < retries:
-            time.sleep(5 * attempt)
+            time.sleep(10 * attempt)
     raise RuntimeError(f"не удалось загрузить {url}: {err}")
 
 
@@ -118,7 +118,15 @@ PRODUCT_RE = re.compile(re.escape(SHOP) + r"/[a-z0-9-]+/\d+-[^\"#?]*\.html")
 def crawl_category(cat):
     found, page = [], 1
     while page < 100:
-        h = fetch(f"{SHOP}/{cat}?p={page}")
+        try:
+            h = fetch(f"{SHOP}/{cat}?p={page}")
+        except RuntimeError as e:
+            # Один сбойный раздел не должен ронять весь сбор. Разделы распродажи и склада
+            # критичны: без них точные совпадения уходят на страницы моделей и фид сильно сужается.
+            if SALE_SECTION.strip("/") in cat or STOCK_SECTION.strip("/") in cat:
+                raise
+            log.warning("Раздел %s пропущен: %s", cat, e)
+            break
         if h is None:
             break
         new = [u for u in dict.fromkeys(PRODUCT_RE.findall(h)) if u not in found]
@@ -240,7 +248,11 @@ def num(rx, h):
 
 
 def parse_shop_page(url):
-    h = fetch(url)
+    try:
+        h = fetch(url)
+    except RuntimeError as e:
+        log.warning("Страница пропущена: %s", e)  # товар уйдёт в отчёт, сбор продолжится
+        return None
     if h is None:
         return None
     name = re.search(r'<h1[^>]*itemprop="name"[^>]*>(.*?)</h1>', h, re.S)

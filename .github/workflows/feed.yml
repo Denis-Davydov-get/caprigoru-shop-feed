@@ -32,13 +32,25 @@ jobs:
 
       - name: Генерация фида (+ отчёт match_report.csv)
         # Если сайт недоступен целиком, пробуем ещё раз через 10 минут
+        shell: bash
         run: |
           for attempt in 1 2 3; do
-            python caprigo_feed.py public/caprigo_feed.xml && exit 0
+            python caprigo_feed.py public/caprigo_feed.xml 2>&1 | tee run.log && exit 0
             echo "Попытка $attempt не удалась"
             [ $attempt -lt 3 ] && sleep 600
           done
           exit 1
+
+      # Причина сбоя в аннотациях: они видны без входа в GitHub
+      - name: Диагностика сбоя
+        if: failure()
+        shell: bash
+        run: |
+          echo "::error title=Последняя строка лога::$(tail -n 1 run.log)"
+          echo "::error title=Предыдущая строка лога::$(tail -n 2 run.log | head -n 1)"
+          for url in https://www.caprigo.ru/api/v1/goods_types https://www.caprigoshop.ru/; do
+            echo "::warning title=Доступность $url::$(curl -sS -o /dev/null -m 20 -w 'HTTP %{http_code}' "$url" 2>&1)"
+          done
 
       - uses: actions/upload-pages-artifact@v3
         with:
